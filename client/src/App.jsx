@@ -8,6 +8,7 @@ import Footer from "./components/common/Footer";
 import Home from "./Pages/Home";
 import Task from "./Pages/Task";
 import PostTask from "./Pages/PostTask";
+import EditTask from "./Pages/EditTask";
 import AdminLogin from "./admin/pages/AdminLogin.jsx";
 import AdminDashboard from "./admin/pages/AdminDashboard.jsx";
 import TaskerDashboard from "./tasker/pages/TaskerDashboard.jsx";
@@ -28,6 +29,7 @@ function App() {
                             <Route path="/" element={<Home />} />
                             <Route path="/tasks" element={<Task />} />
                             <Route path="/post" element={<PostTask />} />
+                            <Route path="/edit-task/:id" element={<EditTask />} />
                             <Route path="/admin/login" element={<AdminLogin />} />
                             <Route path="/admin/dashboard" element={<AdminDashboard />} />
                             <Route path="/login" element={<Login />} />

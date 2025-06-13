@@ -72,6 +72,18 @@ const TaskerDashboard = () => {
         }
     };
 
+    const handleDeleteTask = async (taskId) => {
+        try {
+            await taskerService.deleteTask(taskId, user?.id);
+            // Refresh the task lists
+            fetchAllData();
+            alert("Task deleted successfully!");
+        } catch (error) {
+            console.error("Error deleting task:", error);
+            alert("Failed to delete task. Please try again.");
+        }
+    };
+
     const renderTasks = () => {
         let tasksToShow = [];
         let emptyMessage = "";
@@ -107,10 +119,10 @@ const TaskerDashboard = () => {
                     <TaskCard
                         key={task.id}
                         task={task}
-                        onAccept={activeTab === 'available' ? handleAcceptTask : null}
-                        onClick={() => navigate(`/tasker/task/${task.id}`)}
-                        actionLabel={activeTab === 'available' ? "Accept Task" : "View Details"}
-                        showAcceptButton={activeTab === 'available'}
+                        currentUserId={user?.id}
+                        onTaskAccepted={activeTab === 'available' ? handleAcceptTask : null}
+                        onViewDetails={() => navigate(`/tasker/task/${task.id}`)}
+                        onTaskDeleted={handleDeleteTask}
                     />
                 ))}
             </div>

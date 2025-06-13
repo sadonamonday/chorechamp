@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const { login, isAdmin } = useAuth();
     const [formData, setFormData] = useState({
         email: '',
         password: ''
@@ -42,7 +42,12 @@ const Login = () => {
             const result = await login(formData.email, formData.password);
 
             if (result.success) {
-                navigate('/tasker/dashboard');
+                // Check if the user is an admin and redirect accordingly
+                if (result.user && result.user.role === 'admin') {
+                    navigate('/admin/dashboard');
+                } else {
+                    navigate('/tasker/dashboard');
+                }
             } else {
                 setMessage(result.message || 'Login failed. Please check your credentials.');
             }

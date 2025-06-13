@@ -174,6 +174,64 @@ const taskerService = {
             console.error('Error creating task:', error);
             throw error;
         }
+    },
+
+
+// Delete a task
+    deleteTask: async (taskId, userId = null) => {
+        try {
+            const body = { task_id: taskId };
+            if (userId) {
+                body.user_id = userId;
+            }
+
+            const response = await fetch(`${API_BASE_URL}/tasks/deleteTask.php`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to delete task');
+            }
+
+            return data;
+        } catch (error) {
+            console.error('Error deleting task:', error);
+            throw error;
+        }
+    },
+
+// Update a task
+    updateTask: async (taskData, userId = null) => {
+        try {
+            if (userId) {
+                taskData.user_id = userId;
+            }
+
+            const response = await fetch(`${API_BASE_URL}/tasks/updateTask.php`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(taskData)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to update task');
+            }
+
+            return data;
+        } catch (error) {
+            console.error('Error updating task:', error);
+            throw error;
+        }
     }
 };
 

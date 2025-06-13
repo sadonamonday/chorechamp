@@ -1,9 +1,13 @@
 import React, { useState } from "react";
 import { format } from 'date-fns';
-import { FaMapMarkerAlt, FaClock, FaMoneyBillWave, FaUser, FaSpinner } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaClock, FaMoneyBillWave, FaUser, FaSpinner, FaEdit, FaTrash } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+import taskerService from '../../tasker/utils/taskerService';
 
-const TaskCard = ({ task, onTaskAccepted, onViewDetails, currentUserId }) => {
+const TaskCard = ({ task, onTaskAccepted, onViewDetails, currentUserId, onTaskDeleted, onTaskUpdated }) => {
     const [isAccepting, setIsAccepting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const navigate = useNavigate();
 
     const statusColors = {
         pending: 'bg-yellow-100 text-yellow-800',
@@ -63,6 +67,36 @@ const TaskCard = ({ task, onTaskAccepted, onViewDetails, currentUserId }) => {
         } finally {
             setIsAccepting(false);
         }
+    };
+
+    // Add this function to handle task deletion
+    const handleDeleteClick = async (e) => {
+        e.stopPropagation();
+
+        if (!window.confirm("Are you sure you want to delete this task?")) {
+            return;
+        }
+
+        setIsDeleting(true);
+
+        try {
+            await taskerService.deleteTask(task.id, currentUserId);
+            alert("Task deleted successfully!");
+            if (onTaskDeleted) {
+                onTaskDeleted(task.id);
+            }
+        } catch (error) {
+            console.error("Failed to delete task:", error);
+            alert("An error occurred while deleting the task.");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    // Add this function to handle task edit
+    const handleEditClick = (e) => {
+        e.stopPropagation();
+        navigate(`/edit-task/${task.id}`);
     };
 
     const handleCardClick = () => {
@@ -128,6 +162,29 @@ const TaskCard = ({ task, onTaskAccepted, onViewDetails, currentUserId }) => {
                     {task.status ? task.status.charAt(0).toUpperCase() + task.status.slice(1) : 'Unknown'}
                 </span>
 
+                {/* Add these buttons for task owner */}
+                {String(task.created_by) === String(currentUserId) && (
+                    <div className="flex space-x-2">
+                        <button
+                            onClick={handleEditClick}
+                            className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full text-sm transition-colors duration-200 z-10"
+                            title="Edit task"
+                        >
+                            <FaEdit />
+                        </button>
+                        <button
+                            onClick={handleDeleteClick}
+                            disabled={isDeleting}
+                            className={`${
+                                isDeleting ? 'bg-gray-400' : 'bg-red-600 hover:bg-red-700'
+                            } text-white p-2 rounded-full text-sm transition-colors duration-200 z-10`}
+                            title="Delete task"
+                        >
+                            <FaTrash />
+                        </button>
+                    </div>
+                )}
+
                 {canAcceptTask && (
                     <button
                         onClick={handleAcceptClick}
@@ -143,7 +200,7 @@ const TaskCard = ({ task, onTaskAccepted, onViewDetails, currentUserId }) => {
                     </button>
                 )}
 
-                {task.status === "pending" && String(task.created_by) === String(currentUserId) && (
+                {task.status === "pending" && String(task.created_by) === String(currentUserId) && !isDeleting && (
                     <span className="text-xs text-gray-500 italic">Your task</span>
                 )}
             </div>
