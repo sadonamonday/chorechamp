@@ -7,7 +7,7 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "node build.js"
+    "build": "npm ci --prefix client && npm run build --prefix client"
   },
   "devDependencies": {
     "gh-pages": "^6.3.0"

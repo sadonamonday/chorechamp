@@ -47,13 +47,19 @@ Add the following environment variables under **Settings** → **Environment Var
 
 ## What's Been Configured
 
-### Root Build Script (`build.js`)
-A cross-platform Node.js build script that:
-1. Navigates to the `client` directory
-2. Installs dependencies using `npm install`
-3. Runs the Vite build
+### Root Build Script
+The root `package.json` includes a build script that:
+1. Runs `npm ci` in the client directory to install dependencies (including Rollup's optional dependencies)
+2. Runs the Vite build
 
-This allows Cloudflare Pages to build from the repository root on both Linux and Windows environments.
+```json
+"scripts": {
+  "build": "npm ci --prefix client && npm run build --prefix client"
+}
+```
+
+> [!NOTE]
+> Using `npm ci` instead of `npm install` ensures that Rollup's optional dependencies (like `@rollup/rollup-linux-x64-gnu`) are installed correctly, which is critical for the build to succeed on Cloudflare Pages' Linux environment.
 
 ### Client-Side Routing (`_redirects`)
 The `_redirects` file ensures all routes are handled by React Router:
