@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_BASE_URL } from '../../../config';
 
 const TaskForm = () => {
     const [formData, setFormData] = useState({
@@ -19,7 +20,7 @@ const TaskForm = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await fetch("http://localhost/chorchamp-server/api/tasks/postTask.php", {
+            const response = await fetch(`${API_BASE_URL}/tasks/postTask.php`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

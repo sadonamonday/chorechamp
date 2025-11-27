@@ -1,6 +1,8 @@
+import { API_BASE_URL } from '../config';
+
 export const loginAdmin = async (email, password) => {
     try {
-        const res = await fetch("http://localhost/chorchamp-server/api/users/login.php", {
+        const res = await fetch(`${API_BASE_URL}/users/login.php`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

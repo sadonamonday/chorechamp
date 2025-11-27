@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { FcGoogle } from 'react-icons/fc';
 
 const Login = () => {
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const { login, loginWithGoogle, isAdmin } = useAuth();
     const [formData, setFormData] = useState({
         email: '',
         password: ''
@@ -42,7 +43,12 @@ const Login = () => {
             const result = await login(formData.email, formData.password);
 
             if (result.success) {
-                navigate('/tasker/dashboard');
+                // Check if the user is an admin and redirect accordingly
+                if (result.user && result.user.role === 'admin') {
+                    navigate('/admin/dashboard');
+                } else {
+                    navigate('/tasker/dashboard');
+                }
             } else {
                 setMessage(result.message || 'Login failed. Please check your credentials.');
             }
@@ -50,6 +56,19 @@ const Login = () => {
             console.error('Login error:', error);
             setMessage('An error occurred during login.');
         } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleGoogleLogin = async () => {
+        setMessage('');
+        setIsLoading(true);
+        try {
+            await loginWithGoogle();
+            // The redirect to the callback URL is handled by Supabase
+        } catch (error) {
+            console.error('Google login error:', error);
+            setMessage('An error occurred during Google login.');
             setIsLoading(false);
         }
     };
@@ -99,6 +118,24 @@ const Login = () => {
                     {isLoading ? 'Signing In...' : 'Sign In'}
                 </button>
             </form>
+
+            <div className="mt-6 relative">
+                <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                </div>
+            </div>
+
+            <button
+                onClick={handleGoogleLogin}
+                disabled={isLoading}
+                className="mt-4 w-full flex items-center justify-center gap-2 bg-white border border-gray-300 py-2 px-4 rounded hover:bg-gray-50 transition-colors"
+            >
+                <FcGoogle className="text-xl" />
+                <span>Sign in with Google</span>
+            </button>
         </div>
     );
 };

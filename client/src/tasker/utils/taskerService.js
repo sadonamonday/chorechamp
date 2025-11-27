@@ -1,17 +1,15 @@
-
-const API_BASE_URL = 'http://localhost/chorchamp-server/api';
+import supabase from '../../services/supabaseClient';
 
 const taskerService = {
     // Get all available tasks
     getAllTasks: async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/tasks/getTasks.php`);
-            const data = await response.json();
+            const { data, error } = await supabase
+                .from('tasks')
+                .select('*, services(name, icon)')
+                .order('created_at', { ascending: false });
 
-            if (!response.ok) {
-                throw new Error(data.message || 'Failed to fetch tasks');
-            }
-
+            if (error) throw error;
             return data;
         } catch (error) {
             console.error('Error fetching all tasks:', error);
@@ -19,26 +17,15 @@ const taskerService = {
         }
     },
 
-
-    getMyPostedTasks: async (userId = null) => {
+    getMyPostedTasks: async (userId) => {
         try {
-            let url = `${API_BASE_URL}/tasks/getMyPostedTasks.php`;
-            if (userId) {
-                url += `?user_id=${userId}`;
-            }
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
+            const { data, error } = await supabase
+                .from('tasks')
+                .select('*, services(name, icon)')
+                .eq('client_id', userId)
+                .order('created_at', { ascending: false });
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || 'Failed to fetch posted tasks');
-            }
-
+            if (error) throw error;
             return data;
         } catch (error) {
             console.error('Error fetching posted tasks:', error);
@@ -46,26 +33,15 @@ const taskerService = {
         }
     },
 
-
-    getMyAcceptedTasks: async (userId = null) => {
+    getMyAcceptedTasks: async (userId) => {
         try {
-            let url = `${API_BASE_URL}/tasks/getMyAcceptedTasks.php`;
-            if (userId) {
-                url += `?user_id=${userId}`;
-            }
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
+            const { data, error } = await supabase
+                .from('tasks')
+                .select('*, services(name, icon)')
+                .eq('tasker_id', userId)
+                .order('created_at', { ascending: false });
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || 'Failed to fetch accepted tasks');
-            }
-
+            if (error) throw error;
             return data;
         } catch (error) {
             console.error('Error fetching accepted tasks:', error);
@@ -74,28 +50,20 @@ const taskerService = {
     },
 
     // Accept a task
-    acceptTask: async (taskId, userId = null) => {
+    acceptTask: async (taskId, userId) => {
         try {
-            const body = { task_id: taskId };
-            if (userId) {
-                body.user_id = userId;
-            }
+            const { data, error } = await supabase
+                .from('tasks')
+                .update({
+                    status: 'assigned',
+                    tasker_id: userId
+                })
+                .eq('id', taskId)
+                .select()
+                .single();
 
-            const response = await fetch(`${API_BASE_URL}/tasks/acceptTask.php`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(body)
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || 'Failed to accept task');
-            }
-
-            return data;
+            if (error) throw error;
+            return { success: true, task: data };
         } catch (error) {
             console.error('Error accepting task:', error);
             throw error;
@@ -105,13 +73,13 @@ const taskerService = {
     // Get task details by ID
     getTaskById: async (taskId) => {
         try {
-            const response = await fetch(`${API_BASE_URL}/tasks/getTaskById.php?id=${taskId}`);
-            const data = await response.json();
+            const { data, error } = await supabase
+                .from('tasks')
+                .select('*, services(name, icon), client:profiles!client_id(*)')
+                .eq('id', taskId)
+                .single();
 
-            if (!response.ok) {
-                throw new Error(data.message || 'Failed to fetch task details');
-            }
-
+            if (error) throw error;
             return data;
         } catch (error) {
             console.error('Error fetching task details:', error);
@@ -122,26 +90,15 @@ const taskerService = {
     // Update task status (for completing tasks, etc.)
     updateTaskStatus: async (taskId, status, userId = null) => {
         try {
-            const body = { task_id: taskId, status: status };
-            if (userId) {
-                body.user_id = userId;
-            }
+            const { data, error } = await supabase
+                .from('tasks')
+                .update({ status: status })
+                .eq('id', taskId)
+                .select()
+                .single();
 
-            const response = await fetch(`${API_BASE_URL}/tasks/updateTaskStatus.php`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(body)
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || 'Failed to update task status');
-            }
-
-            return data;
+            if (error) throw error;
+            return { success: true, task: data };
         } catch (error) {
             console.error('Error updating task status:', error);
             throw error;
@@ -149,29 +106,58 @@ const taskerService = {
     },
 
     // Create a new task
-    createTask: async (taskData, userId = null) => {
+    createTask: async (taskData, userId) => {
         try {
-            if (userId) {
-                taskData.user_id = userId;
-            }
+            const { data, error } = await supabase
+                .from('tasks')
+                .insert([{
+                    ...taskData,
+                    client_id: userId,
+                    status: 'open'
+                }])
+                .select()
+                .single();
 
-            const response = await fetch(`${API_BASE_URL}/tasks/createTask.php`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(taskData)
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || 'Failed to create task');
-            }
-
-            return data;
+            if (error) throw error;
+            return { success: true, task: data };
         } catch (error) {
             console.error('Error creating task:', error);
+            throw error;
+        }
+    },
+
+    // Delete a task
+    deleteTask: async (taskId, userId) => {
+        try {
+            const { error } = await supabase
+                .from('tasks')
+                .delete()
+                .eq('id', taskId)
+                .eq('client_id', userId); // Ensure ownership
+
+            if (error) throw error;
+            return { success: true };
+        } catch (error) {
+            console.error('Error deleting task:', error);
+            throw error;
+        }
+    },
+
+    // Update a task
+    updateTask: async (taskData, userId = null) => {
+        try {
+            const { id, ...updates } = taskData;
+            const { data, error } = await supabase
+                .from('tasks')
+                .update(updates)
+                .eq('id', id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return { success: true, task: data };
+        } catch (error) {
+            console.error('Error updating task:', error);
             throw error;
         }
     }

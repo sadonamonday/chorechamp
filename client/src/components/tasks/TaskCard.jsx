@@ -1,9 +1,13 @@
 import React, { useState } from "react";
 import { format } from 'date-fns';
-import { FaMapMarkerAlt, FaClock, FaMoneyBillWave, FaUser, FaSpinner } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaClock, FaMoneyBillWave, FaUser, FaSpinner, FaEdit, FaTrash } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+import supabase from '../../services/supabaseClient';
 
-const TaskCard = ({ task, onTaskAccepted, onViewDetails, currentUserId }) => {
+const TaskCard = ({ task, onTaskAccepted, onViewDetails, currentUserId, onTaskDeleted, onTaskUpdated, isAdmin = false }) => {
     const [isAccepting, setIsAccepting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const navigate = useNavigate();
 
     const statusColors = {
         pending: 'bg-yellow-100 text-yellow-800',
@@ -25,37 +29,21 @@ const TaskCard = ({ task, onTaskAccepted, onViewDetails, currentUserId }) => {
         setIsAccepting(true);
 
         try {
-            const requestBody = {
-                task_id: parseInt(task.id),
-                user_id: parseInt(currentUserId)
-            };
+            const { data, error } = await supabase
+                .from('tasks')
+                .update({
+                    status: 'assigned',
+                    tasker_id: currentUserId
+                })
+                .eq('id', task.id)
+                .select()
+                .single();
 
-            console.log('Sending request:', requestBody);
+            if (error) throw error;
 
-            const response = await fetch('http://localhost/chorchamp-server/api/tasks/acceptTask.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-                credentials: 'include',
-                body: JSON.stringify(requestBody),
-            });
-
-            console.log('Response status:', response.status);
-
-            const result = await response.json();
-            console.log('Response data:', result);
-
-            if (response.ok && result.success) {
-                alert('Task accepted successfully!');
-                if (onTaskAccepted) {
-                    onTaskAccepted(task.id, result.task);
-                }
-            } else {
-                const errorMessage = result.message || `HTTP ${response.status}: Could not accept the task.`;
-                alert(`Error: ${errorMessage}`);
-                console.error('Server error:', result);
+            alert('Task accepted successfully!');
+            if (onTaskAccepted) {
+                onTaskAccepted(task.id, data);
             }
         } catch (error) {
             console.error('Failed to accept task:', error);
@@ -63,6 +51,43 @@ const TaskCard = ({ task, onTaskAccepted, onViewDetails, currentUserId }) => {
         } finally {
             setIsAccepting(false);
         }
+    };
+
+    // Handle task deletion
+    const handleDeleteClick = async (e) => {
+        e.stopPropagation();
+
+        if (!window.confirm("Are you sure you want to delete this task?")) {
+            return;
+        }
+
+        setIsDeleting(true);
+
+        try {
+            const { error } = await supabase
+                .from('tasks')
+                .delete()
+                .eq('id', task.id)
+                .eq('client_id', currentUserId); // Ensure ownership
+
+            if (error) throw error;
+
+            alert("Task deleted successfully!");
+            if (onTaskDeleted) {
+                onTaskDeleted(task.id);
+            }
+        } catch (error) {
+            console.error("Failed to delete task:", error);
+            alert("An error occurred while deleting the task.");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    // Handle task edit
+    const handleEditClick = (e) => {
+        e.stopPropagation();
+        navigate(`/edit-task/${task.id}`);
     };
 
     const handleCardClick = () => {
@@ -84,6 +109,8 @@ const TaskCard = ({ task, onTaskAccepted, onViewDetails, currentUserId }) => {
     const canAcceptTask = task.status === "pending" &&
         String(task.created_by) !== String(currentUserId) &&
         !isAccepting;
+
+    const isTaskOwner = String(task.created_by) === String(currentUserId) || isAdmin;
 
     return (
         <div
@@ -128,24 +155,49 @@ const TaskCard = ({ task, onTaskAccepted, onViewDetails, currentUserId }) => {
                     {task.status ? task.status.charAt(0).toUpperCase() + task.status.slice(1) : 'Unknown'}
                 </span>
 
-                {canAcceptTask && (
-                    <button
-                        onClick={handleAcceptClick}
-                        disabled={isAccepting}
-                        className={`${
-                            isAccepting
+                <div className="flex items-center space-x-2">
+                    {/* Edit and Delete buttons for task owner */}
+                    {isTaskOwner && (
+                        <>
+                            <button
+                                onClick={handleEditClick}
+                                className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full text-sm transition-colors duration-200 z-10"
+                                title="Edit task"
+                            >
+                                <FaEdit />
+                            </button>
+                            <button
+                                onClick={handleDeleteClick}
+                                disabled={isDeleting}
+                                className={`${isDeleting ? 'bg-gray-400' : 'bg-red-600 hover:bg-red-700'
+                                    } text-white p-2 rounded-full text-sm transition-colors duration-200 z-10`}
+                                title="Delete task"
+                            >
+                                {isDeleting ? <FaSpinner className="animate-spin" /> : <FaTrash />}
+                            </button>
+                        </>
+                    )}
+
+                    {/* Accept button for non-owners */}
+                    {canAcceptTask && (
+                        <button
+                            onClick={handleAcceptClick}
+                            disabled={isAccepting}
+                            className={`${isAccepting
                                 ? 'bg-gray-400 cursor-not-allowed'
                                 : 'bg-green-600 hover:bg-green-700'
-                        } text-white px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 z-10 flex items-center space-x-2`}
-                    >
-                        {isAccepting && <FaSpinner className="animate-spin" />}
-                        <span>{isAccepting ? 'Accepting...' : 'Accept Task'}</span>
-                    </button>
-                )}
+                                } text-white px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 z-10 flex items-center space-x-2`}
+                        >
+                            {isAccepting && <FaSpinner className="animate-spin" />}
+                            <span>{isAccepting ? 'Accepting...' : 'Accept Task'}</span>
+                        </button>
+                    )}
 
-                {task.status === "pending" && String(task.created_by) === String(currentUserId) && (
-                    <span className="text-xs text-gray-500 italic">Your task</span>
-                )}
+                    {/* "Your task" label for pending tasks owned by current user */}
+                    {task.status === "pending" && isTaskOwner && !isDeleting && (
+                        <span className="text-xs text-gray-500 italic">Your task</span>
+                    )}
+                </div>
             </div>
         </div>
     );

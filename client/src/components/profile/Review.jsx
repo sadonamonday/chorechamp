@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../../../config';
 
 const Review = ({ taskId, taskerUserId, onReviewSubmitted }) => {
     const [rating, setRating] = useState(0);
@@ -19,7 +20,7 @@ const Review = ({ taskId, taskerUserId, onReviewSubmitted }) => {
         }
 
         try {
-            await axios.post('http://localhost/chorchamp-server/api/users/addReview.php', {
+            await axios.post(`${API_BASE_URL}/users/addReview.php`, {
                 task_id: taskId,
                 user_id: taskerUserId,
                 rating,

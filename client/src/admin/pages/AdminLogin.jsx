@@ -1,12 +1,19 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminAuthContext } from "../context/AdminAuthContext";
-import { loginAdmin } from "../../../../api/adminAuthService.js";
+import { loginAdmin } from "../../../api/adminAuthService.js";
 import { useAdminAuth } from "../context/AdminAuthContext";
 
 const AdminLogin = () => {
     const navigate = useNavigate();
-    const { setAdmin } = useContext(AdminAuthContext);
+    const { admin, setAdmin } = useContext(AdminAuthContext);
+
+    // Redirect to dashboard if already logged in
+    useEffect(() => {
+        if (admin) {
+            navigate("/admin/dashboard");
+        }
+    }, [admin, navigate]);
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -25,6 +32,7 @@ const AdminLogin = () => {
             const res = await loginAdmin(email, password);
             if (res.success) {
                 localStorage.setItem("adminToken", res.token);
+                localStorage.setItem("adminUser", JSON.stringify(res.user));
                 setAdmin(res.user); // Save user in context
                 navigate("/admin/dashboard");
             } else {

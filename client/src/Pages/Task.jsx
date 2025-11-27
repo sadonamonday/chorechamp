@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import TaskCard from "../components/tasks/TaskCard";
 import { useAuth } from '../context/AuthContext.jsx';
+import taskerService from '../tasker/utils/taskerService';
 
 const Task = () => {
     const { user } = useAuth();
@@ -14,7 +15,7 @@ const Task = () => {
     });
 
     const handleTaskAccepted = (taskId, updatedTask) => {
-        setTasks(prevTasks => 
+        setTasks(prevTasks =>
             prevTasks.map(task => task.id === taskId ? updatedTask : task)
         );
     };
@@ -29,10 +30,9 @@ const Task = () => {
 
     const fetchTasks = async () => {
         try {
-            const response = await fetch("http://localhost/chorchamp-server/api/tasks/getTasks.php");
-            const data = await response.json();
-            if (Array.isArray(data.data)) {
-                setTasks(data.data);
+            const data = await taskerService.getAllTasks();
+            if (Array.isArray(data)) {
+                setTasks(data);
             } else {
                 console.error("Expected array but got:", data);
                 setTasks([]);
@@ -47,7 +47,7 @@ const Task = () => {
 
     const filteredTasks = tasks.filter(task => {
         const matchesSearch = task.title.toLowerCase().includes(filters.search.toLowerCase()) ||
-                            task.description.toLowerCase().includes(filters.search.toLowerCase());
+            task.description.toLowerCase().includes(filters.search.toLowerCase());
         const matchesCategory = !filters.category || task.category === filters.category;
         const matchesStatus = !filters.status || task.status === filters.status;
         const matchesPriceRange = filters.priceRange === "all" ||

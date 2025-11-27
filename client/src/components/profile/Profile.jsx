@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import axios from 'axios';
+import supabase from '../../services/supabaseClient';
 
 const Profile = () => {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const [profile, setProfile] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
@@ -17,20 +17,29 @@ const Profile = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchProfile();
-        fetchReviews();
+        if (user?.id) {
+            fetchProfile();
+            fetchReviews();
+        }
     }, [user?.id]);
 
     const fetchProfile = async () => {
         try {
-            const response = await axios.get(`http://localhost/chorchamp-server/api/users/profile.php?user_id=${user.id}`);
-            setProfile(response.data.profile);
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+
+            if (error) throw error;
+
+            setProfile(data);
             setFormData({
-                bio: response.data.profile.bio || '',
-                phone: response.data.profile.phone || '',
-                skills: response.data.profile.skills || '',
-                hourly_rate: response.data.profile.hourly_rate || '',
-                availability: response.data.profile.availability || ''
+                bio: data.bio || '',
+                phone: data.phone || '', // Note: Phone is not in schema.sql, might need to add it or ignore
+                skills: data.skills || '', // Note: Skills is not in schema.sql
+                hourly_rate: data.hourly_rate || '', // Note: hourly_rate is not in schema.sql
+                availability: data.availability || '' // Note: availability is not in schema.sql
             });
         } catch (error) {
             console.error('Error fetching profile:', error);
@@ -41,8 +50,20 @@ const Profile = () => {
 
     const fetchReviews = async () => {
         try {
-            const response = await axios.get(`http://localhost/chorchamp-server/api/users/reviews.php?user_id=${user.id}`);
-            setReviews(response.data.reviews);
+            const { data, error } = await supabase
+                .from('reviews')
+                .select('*, reviewer:profiles!reviewer_id(full_name)')
+                .eq('reviewee_id', user.id);
+
+            if (error) throw error;
+
+            // Map reviewer name
+            const mappedReviews = data.map(r => ({
+                ...r,
+                reviewer_name: r.reviewer?.full_name || 'Anonymous'
+            }));
+
+            setReviews(mappedReviews);
         } catch (error) {
             console.error('Error fetching reviews:', error);
         }
@@ -56,10 +77,19 @@ const Profile = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://localhost/chorchamp-server/api/users/updateProfile.php', {
-                user_id: user.id,
-                ...formData
-            });
+            const { error } = await supabase
+                .from('profiles')
+                .update({
+                    bio: formData.bio,
+                    // phone: formData.phone, // Add to schema if needed
+                    // skills: formData.skills,
+                    // hourly_rate: formData.hourly_rate,
+                    // availability: formData.availability
+                })
+                .eq('id', user.id);
+
+            if (error) throw error;
+
             setIsEditing(false);
             fetchProfile();
         } catch (error) {
@@ -74,12 +104,20 @@ const Profile = () => {
             <div className="bg-white rounded-lg shadow-md p-6 mb-6">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold">{user.username}'s Profile</h2>
-                    <button
-                        onClick={() => setIsEditing(!isEditing)}
-                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                    >
-                        {isEditing ? 'Cancel' : 'Edit Profile'}
-                    </button>
+                    <div className="flex gap-4">
+                        <button
+                            onClick={() => setIsEditing(!isEditing)}
+                            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                        >
+                            {isEditing ? 'Cancel' : 'Edit Profile'}
+                        </button>
+                        <button
+                            onClick={logout}
+                            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                        >
+                            Logout
+                        </button>
+                    </div>
                 </div>
 
                 {isEditing ? (
@@ -169,8 +207,8 @@ const Profile = () => {
                         <div>
                             <h3 className="text-lg font-semibold">Availability</h3>
                             <p className="text-gray-600">
-                                {profile.availability ? profile.availability.charAt(0).toUpperCase() + 
-                                 profile.availability.slice(1) : 'Not specified'}
+                                {profile.availability ? profile.availability.charAt(0).toUpperCase() +
+                                    profile.availability.slice(1) : 'Not specified'}
                             </p>
                         </div>
                     </div>

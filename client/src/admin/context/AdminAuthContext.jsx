@@ -9,8 +9,10 @@ export const AdminAuthProvider = ({ children }) => {
     const [admin, setAdmin] = useState(null);
 
     useEffect(() => {
-        const storedAdmin = localStorage.getItem("admin");
-        if (storedAdmin) {
+        // Check for admin token and try to retrieve admin user data
+        const adminToken = localStorage.getItem("adminToken");
+        const storedAdmin = localStorage.getItem("adminUser");
+        if (storedAdmin && adminToken) {
             setAdmin(JSON.parse(storedAdmin));
         }
     }, []);

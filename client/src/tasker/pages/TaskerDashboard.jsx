@@ -3,6 +3,8 @@ import TaskCard from '../../components/tasks/TaskCard';
 import taskerService from '../utils/taskerService.js'
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import AvailableTasksList from '../components/AvailableTasksList';
+
 
 const TaskerDashboard = () => {
     const [allTasks, setAllTasks] = useState([]);
@@ -72,6 +74,18 @@ const TaskerDashboard = () => {
         }
     };
 
+    const handleDeleteTask = async (taskId) => {
+        try {
+            await taskerService.deleteTask(taskId, user?.id);
+            // Refresh the task lists
+            fetchAllData();
+            alert("Task deleted successfully!");
+        } catch (error) {
+            console.error("Error deleting task:", error);
+            alert("Failed to delete task. Please try again.");
+        }
+    };
+
     const renderTasks = () => {
         let tasksToShow = [];
         let emptyMessage = "";
@@ -97,6 +111,21 @@ const TaskerDashboard = () => {
             return <div className="text-center py-8">Loading tasks...</div>;
         }
 
+        // Use new split-view layout for Available Tasks
+        if (activeTab === 'available') {
+            if (tasksToShow.length === 0) {
+                return <div className="text-center py-8 text-gray-600">{emptyMessage}</div>;
+            }
+            return (
+                <AvailableTasksList
+                    tasks={tasksToShow}
+                    onAcceptTask={handleAcceptTask}
+                    currentUserId={user?.id}
+                />
+            );
+        }
+
+        // Use grid layout for other tabs
         if (tasksToShow.length === 0) {
             return <div className="text-center py-8 text-gray-600">{emptyMessage}</div>;
         }
@@ -107,10 +136,10 @@ const TaskerDashboard = () => {
                     <TaskCard
                         key={task.id}
                         task={task}
-                        onAccept={activeTab === 'available' ? handleAcceptTask : null}
-                        onClick={() => navigate(`/tasker/task/${task.id}`)}
-                        actionLabel={activeTab === 'available' ? "Accept Task" : "View Details"}
-                        showAcceptButton={activeTab === 'available'}
+                        currentUserId={user?.id}
+                        onTaskAccepted={activeTab === 'available' ? handleAcceptTask : null}
+                        onViewDetails={() => navigate(`/tasker/task/${task.id}`)}
+                        onTaskDeleted={handleDeleteTask}
                     />
                 ))}
             </div>
@@ -125,31 +154,28 @@ const TaskerDashboard = () => {
                 <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
                     <button
                         onClick={() => setActiveTab('available')}
-                        className={`px-4 py-2 rounded-md font-medium transition-colors duration-200 ${
-                            activeTab === 'available'
-                                ? 'bg-white text-blue-600 shadow-sm'
-                                : 'text-gray-600 hover:text-gray-800'
-                        }`}
+                        className={`px-4 py-2 rounded-md font-medium transition-colors duration-200 ${activeTab === 'available'
+                            ? 'bg-white text-blue-600 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-800'
+                            }`}
                     >
                         Available Tasks ({allTasks.length})
                     </button>
                     <button
                         onClick={() => setActiveTab('posted')}
-                        className={`px-4 py-2 rounded-md font-medium transition-colors duration-200 ${
-                            activeTab === 'posted'
-                                ? 'bg-white text-blue-600 shadow-sm'
-                                : 'text-gray-600 hover:text-gray-800'
-                        }`}
+                        className={`px-4 py-2 rounded-md font-medium transition-colors duration-200 ${activeTab === 'posted'
+                            ? 'bg-white text-blue-600 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-800'
+                            }`}
                     >
                         My Posted Tasks ({myPostedTasks.length})
                     </button>
                     <button
                         onClick={() => setActiveTab('accepted')}
-                        className={`px-4 py-2 rounded-md font-medium transition-colors duration-200 ${
-                            activeTab === 'accepted'
-                                ? 'bg-white text-blue-600 shadow-sm'
-                                : 'text-gray-600 hover:text-gray-800'
-                        }`}
+                        className={`px-4 py-2 rounded-md font-medium transition-colors duration-200 ${activeTab === 'accepted'
+                            ? 'bg-white text-blue-600 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-800'
+                            }`}
                     >
                         My Accepted Tasks ({myAcceptedTasks.length})
                     </button>

@@ -1,16 +1,28 @@
-import React, {useEffect, useState} from 'react';
-import axios from 'axios';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import supabase, { getServices } from '../services/supabaseClient';
 
 const PostTask = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const [services, setServices] = useState([]);
 
     useEffect(() => {
         if (!user) {
             navigate('/login', { state: { from: '/post' } });
         }
+
+        const loadServices = async () => {
+            try {
+                const data = await getServices();
+                setServices(data);
+            } catch (error) {
+                console.error("Error loading services:", error);
+            }
+        };
+
+        loadServices();
     }, [user, navigate]);
 
     const [errors, setErrors] = useState({});
@@ -20,27 +32,17 @@ const PostTask = () => {
         title: '',
         description: '',
         location: '',
-        category: '',
+        serviceId: '',
         budget: '',
         deadline: '',
     });
-
-    const categories = [
-        'Cleaning',
-        'Gardening',
-        'Handyman',
-        'Moving',
-        'Painting',
-        'Pet Care',
-        'Other'
-    ];
 
     const validateForm = () => {
         const newErrors = {};
         if (!formData.title.trim()) newErrors.title = 'Title is required';
         if (!formData.description.trim()) newErrors.description = 'Description is required';
         if (!formData.location.trim()) newErrors.location = 'Location is required';
-        if (!formData.category) newErrors.category = 'Category is required';
+        if (!formData.serviceId) newErrors.serviceId = 'Service category is required';
         if (!formData.budget || isNaN(formData.budget)) {
             newErrors.budget = 'Valid price is required';
         }
@@ -71,20 +73,27 @@ const PostTask = () => {
         if (!validateForm()) return;
 
         try {
-            const response = await axios.post("http://localhost/chorchamp-server/api/tasks/postTask.php", {
-                ...formData,
-                created_by: user.id, // Use the authenticated user's ID
-            });
+            const { error } = await supabase.from('tasks').insert([{
+                client_id: user.id,
+                title: formData.title,
+                description: formData.description,
+                location: formData.location,
+                service_id: formData.serviceId,
+                price: formData.budget,
+                scheduled_date: new Date(formData.deadline).toISOString(),
+                status: 'open'
+            }]);
 
-            if (response.data.success) {
-                setMessage("Task posted successfully!");
-                navigate('/tasks'); // Redirect to tasks page
-            } else {
-                setMessage(response.data.message || "Failed to post task.");
-            }
+            if (error) throw error;
+
+            setMessage("Task posted successfully!");
+            // Short delay to show success message
+            setTimeout(() => {
+                navigate('/'); // Redirect to home/tasks page
+            }, 1500);
         } catch (error) {
             console.error("Error posting task:", error);
-            setMessage("An error occurred while posting the task.");
+            setMessage("An error occurred while posting the task: " + error.message);
         }
 
     };
@@ -93,7 +102,7 @@ const PostTask = () => {
         <div className="max-w-xl mx-auto mt-10 p-6 bg-white rounded shadow">
             <h2 className="text-2xl font-bold mb-4">Post a Task</h2>
 
-            {message && <p className="mb-4 text-red-500">{message}</p>}
+            {message && <p className={`mb-4 ${message.includes('successfully') ? 'text-green-500' : 'text-red-500'}`}>{message}</p>}
 
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
@@ -134,17 +143,17 @@ const PostTask = () => {
 
                 <div>
                     <select
-                        name="category"
-                        value={formData.category}
+                        name="serviceId"
+                        value={formData.serviceId}
                         onChange={handleChange}
-                        className={`w-full p-2 border rounded ${errors.category ? 'border-red-500' : ''}`}
+                        className={`w-full p-2 border rounded ${errors.serviceId ? 'border-red-500' : ''}`}
                     >
                         <option value="">Select Category</option>
-                        {categories.map(category => (
-                            <option key={category} value={category}>{category}</option>
+                        {services.map(service => (
+                            <option key={service.id} value={service.id}>{service.name}</option>
                         ))}
                     </select>
-                    {errors.category && <p className="text-red-500 text-sm mt-1">{errors.category}</p>}
+                    {errors.serviceId && <p className="text-red-500 text-sm mt-1">{errors.serviceId}</p>}
                 </div>
 
                 <div>

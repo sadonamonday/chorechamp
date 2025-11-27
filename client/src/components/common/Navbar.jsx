@@ -28,34 +28,31 @@ const Navbar = () => {
                     {user ? (
                         <>
                             <li>
-                                <Link to="/post" className="text-gray-700 hover:text-gray-900 transition duration-200">
-                                    Post Task
+                                <Link to="/post" className="text-gray-700 hover:text-gray-900 transition duration-200 font-medium">
+                                    Book a Task
                                 </Link>
                             </li>
                             <li>
-                                <Link to="/tasker/dashboard" className="text-gray-700 hover:text-gray-900 transition duration-200">
-                                    Dashboard
+                                <Link to="/tasker/dashboard" className="text-gray-700 hover:text-gray-900 transition duration-200 font-medium">
+                                    My Tasks
                                 </Link>
                             </li>
                             <li>
-                                <button
-                                    onClick={logout}
-                                    className="text-gray-700 hover:text-gray-900 transition duration-200"
-                                >
-                                    Logout
-                                </button>
+                                <Link to="/account" className="text-gray-700 hover:text-gray-900 transition duration-200 font-medium">
+                                    Account
+                                </Link>
                             </li>
                         </>
                     ) : (
                         <>
                             <li>
-                                <Link to="/login" className="text-gray-700 hover:text-gray-900 transition duration-200">
-                                    Sign In
+                                <Link to="/register" className="text-gray-700 hover:text-gray-900 transition duration-200">
+                                    Signup/Login
                                 </Link>
                             </li>
                             <li>
                                 <Link
-                                    to="/register"
+                                    to="/register/tasker"
                                     className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-full transition duration-300 shadow-md"
                                 >
                                     Become a Champ

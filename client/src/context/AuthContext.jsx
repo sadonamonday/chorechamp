@@ -1,95 +1,126 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import axios from 'axios';
+import supabase from '../services/supabaseClient';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        // Check active session
+        const getSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                // Fetch profile
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single();
+
+                setUser({ ...session.user, ...profile });
+            }
+            setLoading(false);
+        };
+
+        getSession();
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+            if (session?.user) {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single();
+                setUser({ ...session.user, ...profile });
+            } else {
+                setUser(null);
+            }
+            setLoading(false);
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
 
     const login = async (email, password) => {
-        try {
-            const response = await axios.post('http://localhost/chorchamp-server/api/users/login.php', {
-                email,
-                password
-            });
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password
+        });
 
-            if (response.data.status === 'success') {
-                setUser(response.data.user);
-                return { success: true };
-            } else {
-                return {
-                    success: false,
-                    message: response.data.message || 'Login failed. Please check your credentials.'
-                };
-            }
-        } catch (error) {
-            console.error('Login failed:', error);
-            return { success: false, message: 'Login failed. Please try again.' };
+        if (error) {
+            return { success: false, message: error.message };
         }
+
+        return { success: true, user: data.user };
     };
 
-    const register = async (username, email, password, role = 'tasker') => {
-        try {
-            const response = await axios.post('http://localhost/chorchamp-server/api/users/register.php', {
-                username,
-                email,
-                password,
-                role
-            });
-
-            if (response.data.status === 'success') {
-                // Automatically log in the user after successful registration
-                const loginResponse = await axios.post('http://localhost/chorchamp-server/api/users/login.php', {
-                    email,
-                    password
-                });
-
-                if (loginResponse.data.status === 'success') {
-                    setUser(loginResponse.data.user);
-                    return { success: true };
+    const register = async (username, email, password, role = 'tasker', additionalData = {}) => {
+        const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: {
+                    username,
+                    role,
+                    ...additionalData
                 }
+            }
+        });
 
-                return { success: true, message: 'Registration successful. Please log in.' };
-            } else {
-                return { success: false, message: response.data.message };
-            }
-        } catch (error) {
-            console.error('Registration failed:', error);
-            if (error.response) {
-                return {
-                    success: false,
-                    message: error.response.data.message || 'Registration failed. Please try again.'
-                };
-            }
-            return { success: false, message: 'Registration failed. Please try again.' };
+        if (error) {
+            return { success: false, message: error.message };
         }
+
+        // Profile will be created automatically by database trigger
+        // No need to manually create it here
+        return { success: true };
     };
 
-    const logout = () => {
+    const logout = async () => {
+        await supabase.auth.signOut();
         setUser(null);
     };
 
-    const isAdmin = () => {
-        return user?.role === 'admin';
+    const loginWithGoogle = async () => {
+        try {
+            const { data, error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin + '/auth/callback'
+                }
+            });
+
+            if (error) {
+                console.error('Google login error:', error);
+                return { success: false, message: 'Google login failed. Please try again.' };
+            }
+
+            return { success: true };
+        } catch (error) {
+            console.error('Google login error:', error);
+            return { success: false, message: 'Google login failed. Please try again.' };
+        }
     };
 
-    const isTasker = () => {
-        return user?.role === 'tasker';
-    };
+    const isAdmin = () => user?.role === 'admin';
+    const isTasker = () => user?.role === 'tasker';
 
     return (
         <AuthContext.Provider value={{
             user,
+            setUser,
             loading,
             login,
             logout,
             register,
+            loginWithGoogle,
             isAdmin,
             isTasker,
             isAuthenticated: !!user
         }}>
-            {children}
+            {!loading && children}
         </AuthContext.Provider>
     );
 };
