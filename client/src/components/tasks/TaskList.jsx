@@ -21,18 +21,21 @@ const TaskList = () => {
             setLoading(true);
             setError(null);
 
-            // Join with services to get service details if needed, though schema has service_id
-            // Assuming we might want service name. 
-            // Note: If services table relationship is not set up in Supabase UI, this might fail.
-            // But I defined foreign key in schema.sql, so Supabase should detect it.
+            // Join with task_categories to get category details
             const { data, error } = await supabase
                 .from('tasks')
-                .select('*, services(name, icon)')
+                .select('*, task_categories(name)')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
 
-            setTasks(data || []);
+            // Map data to include category name directly
+            const mappedData = data?.map(task => ({
+                ...task,
+                category: task.task_categories?.name
+            })) || [];
+
+            setTasks(mappedData);
         } catch (error) {
             setError("Failed to fetch tasks. Please try again later.");
             console.error("Fetch error:", error);
@@ -49,7 +52,7 @@ const TaskList = () => {
                 .from('tasks')
                 .update({
                     status: 'assigned',
-                    tasker_id: user.id
+                    assigned_worker_id: user.id
                 })
                 .eq('id', taskId);
 
@@ -67,8 +70,8 @@ const TaskList = () => {
             return task.status === filter;
         })
         .filter(task =>
-            task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            task.description.toLowerCase().includes(searchTerm.toLowerCase())
+            task.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            task.description?.toLowerCase().includes(searchTerm.toLowerCase())
         );
 
     if (loading) {
@@ -115,8 +118,8 @@ const TaskList = () => {
                             className="pl-10 pr-4 py-2 border rounded-full w-full md:w-40 appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                             <option value="all">All Tasks</option>
-                            <option value="pending">Pending</option>
-                            <option value="accepted">Accepted</option>
+                            <option value="open">Open</option>
+                            <option value="assigned">Assigned</option>
                             <option value="completed">Completed</option>
                         </select>
                     </div>
@@ -141,8 +144,8 @@ const TaskList = () => {
                         <TaskCard
                             key={task.id}
                             task={task}
-                            currentUserId={user?.id} // Add this
-                            onAccept={acceptTask}
+                            currentUserId={user?.id}
+                            onTaskAccepted={acceptTask}
                         />
                     ))}
                 </div>

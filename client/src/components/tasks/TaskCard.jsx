@@ -10,9 +10,11 @@ const TaskCard = ({ task, onTaskAccepted, onViewDetails, currentUserId, onTaskDe
     const navigate = useNavigate();
 
     const statusColors = {
-        pending: 'bg-yellow-100 text-yellow-800',
-        accepted: 'bg-green-100 text-green-800',
-        completed: 'bg-blue-100 text-blue-800'
+        open: 'bg-yellow-100 text-yellow-800',
+        assigned: 'bg-green-100 text-green-800',
+        in_progress: 'bg-blue-100 text-blue-800',
+        completed: 'bg-purple-100 text-purple-800',
+        cancelled: 'bg-red-100 text-red-800'
     };
 
     const handleAcceptClick = async (e) => {
@@ -33,7 +35,7 @@ const TaskCard = ({ task, onTaskAccepted, onViewDetails, currentUserId, onTaskDe
                 .from('tasks')
                 .update({
                     status: 'assigned',
-                    tasker_id: currentUserId
+                    assigned_worker_id: currentUserId
                 })
                 .eq('id', task.id)
                 .select()
@@ -68,7 +70,7 @@ const TaskCard = ({ task, onTaskAccepted, onViewDetails, currentUserId, onTaskDe
                 .from('tasks')
                 .delete()
                 .eq('id', task.id)
-                .eq('client_id', currentUserId); // Ensure ownership
+                .eq('user_id', currentUserId); // Ensure ownership
 
             if (error) throw error;
 
@@ -106,11 +108,11 @@ const TaskCard = ({ task, onTaskAccepted, onViewDetails, currentUserId, onTaskDe
         }
     };
 
-    const canAcceptTask = task.status === "pending" &&
-        String(task.created_by) !== String(currentUserId) &&
+    const canAcceptTask = task.status === "open" &&
+        String(task.user_id) !== String(currentUserId) &&
         !isAccepting;
 
-    const isTaskOwner = String(task.created_by) === String(currentUserId) || isAdmin;
+    const isTaskOwner = String(task.user_id) === String(currentUserId) || isAdmin;
 
     return (
         <div
@@ -139,7 +141,7 @@ const TaskCard = ({ task, onTaskAccepted, onViewDetails, currentUserId, onTaskDe
                 <div className="flex items-center text-gray-600">
                     <FaMoneyBillWave className="w-4 h-4 mr-2 text-blue-600" />
                     <span className="text-sm font-medium">
-                        R{task.budget || task.price_per_hour || '0'}/hr
+                        R{task.budget || task.budget_amount || '0'}{task.budget_type === 'hourly' ? '/hr' : ''}
                     </span>
                 </div>
                 <div className="flex items-center text-gray-600">
@@ -193,8 +195,8 @@ const TaskCard = ({ task, onTaskAccepted, onViewDetails, currentUserId, onTaskDe
                         </button>
                     )}
 
-                    {/* "Your task" label for pending tasks owned by current user */}
-                    {task.status === "pending" && isTaskOwner && !isDeleting && (
+                    {/* "Your task" label for open tasks owned by current user */}
+                    {task.status === "open" && isTaskOwner && !isDeleting && (
                         <span className="text-xs text-gray-500 italic">Your task</span>
                     )}
                 </div>

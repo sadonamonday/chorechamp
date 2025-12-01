@@ -6,11 +6,26 @@ const taskerService = {
         try {
             const { data, error } = await supabase
                 .from('tasks')
-                .select('*, services(name, icon)')
+                .select(`
+                    *,
+                    task_categories(name),
+                    locations(address, city),
+                    creator:profiles!user_id(name)
+                `)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            return data;
+
+            // Map data to match frontend expectations
+            const mappedData = data?.map(task => ({
+                ...task,
+                category: task.task_categories?.name,
+                location: task.locations?.city || task.locations?.address,
+                budget: task.budget_amount,
+                created_by: task.creator?.name
+            })) || [];
+
+            return mappedData;
         } catch (error) {
             console.error('Error fetching all tasks:', error);
             throw error;
@@ -21,12 +36,27 @@ const taskerService = {
         try {
             const { data, error } = await supabase
                 .from('tasks')
-                .select('*, services(name, icon)')
-                .eq('client_id', userId)
+                .select(`
+                    *,
+                    task_categories(name),
+                    locations(address, city),
+                    creator:profiles!user_id(name)
+                `)
+                .eq('user_id', userId)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            return data;
+
+            // Map data to match frontend expectations
+            const mappedData = data?.map(task => ({
+                ...task,
+                category: task.task_categories?.name,
+                location: task.locations?.city || task.locations?.address,
+                budget: task.budget_amount,
+                created_by: task.creator?.name
+            })) || [];
+
+            return mappedData;
         } catch (error) {
             console.error('Error fetching posted tasks:', error);
             throw error;
@@ -37,12 +67,27 @@ const taskerService = {
         try {
             const { data, error } = await supabase
                 .from('tasks')
-                .select('*, services(name, icon)')
-                .eq('tasker_id', userId)
+                .select(`
+                    *,
+                    task_categories(name),
+                    locations(address, city),
+                    creator:profiles!user_id(name)
+                `)
+                .eq('assigned_worker_id', userId)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            return data;
+
+            // Map data to match frontend expectations
+            const mappedData = data?.map(task => ({
+                ...task,
+                category: task.task_categories?.name,
+                location: task.locations?.city || task.locations?.address,
+                budget: task.budget_amount,
+                created_by: task.creator?.name
+            })) || [];
+
+            return mappedData;
         } catch (error) {
             console.error('Error fetching accepted tasks:', error);
             throw error;
@@ -56,7 +101,7 @@ const taskerService = {
                 .from('tasks')
                 .update({
                     status: 'assigned',
-                    tasker_id: userId
+                    assigned_worker_id: userId
                 })
                 .eq('id', taskId)
                 .select()
@@ -75,12 +120,29 @@ const taskerService = {
         try {
             const { data, error } = await supabase
                 .from('tasks')
-                .select('*, services(name, icon), client:profiles!client_id(*)')
+                .select(`
+                    *,
+                    task_categories(name),
+                    locations(address, city),
+                    creator:profiles!user_id(*),
+                    assigned_worker:profiles!assigned_worker_id(*)
+                `)
                 .eq('id', taskId)
                 .single();
 
             if (error) throw error;
-            return data;
+
+            // Map data to match frontend expectations
+            const mappedData = {
+                ...data,
+                category: data.task_categories?.name,
+                location: data.locations?.city || data.locations?.address,
+                budget: data.budget_amount,
+                created_by: data.creator?.name,
+                client: data.creator
+            };
+
+            return mappedData;
         } catch (error) {
             console.error('Error fetching task details:', error);
             throw error;
@@ -108,11 +170,15 @@ const taskerService = {
     // Create a new task
     createTask: async (taskData, userId) => {
         try {
+            // Map frontend field names to schema field names
+            const { budget, ...rest } = taskData;
+
             const { data, error } = await supabase
                 .from('tasks')
                 .insert([{
-                    ...taskData,
-                    client_id: userId,
+                    ...rest,
+                    user_id: userId,
+                    budget_amount: budget || taskData.budget_amount,
                     status: 'open'
                 }])
                 .select()
@@ -133,7 +199,7 @@ const taskerService = {
                 .from('tasks')
                 .delete()
                 .eq('id', taskId)
-                .eq('client_id', userId); // Ensure ownership
+                .eq('user_id', userId); // Ensure ownership
 
             if (error) throw error;
             return { success: true };

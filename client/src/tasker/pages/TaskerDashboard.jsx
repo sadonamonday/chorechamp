@@ -4,6 +4,8 @@ import taskerService from '../utils/taskerService.js'
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import AvailableTasksList from '../components/AvailableTasksList';
+import VerificationUpload from '../../components/VerificationUpload';
+import supabase from '../../services/supabaseClient';
 
 
 const TaskerDashboard = () => {
@@ -12,12 +14,15 @@ const TaskerDashboard = () => {
     const [myAcceptedTasks, setMyAcceptedTasks] = useState([]);
     const [activeTab, setActiveTab] = useState('available');
     const [loading, setLoading] = useState(true);
+    const [verificationStatus, setVerificationStatus] = useState(null);
     const navigate = useNavigate();
     const { user } = useAuth();
 
     useEffect(() => {
-        fetchAllData();
-    }, []);
+        if (user) {
+            fetchAllData();
+        }
+    }, [user]);
 
     const fetchAllData = async () => {
         setLoading(true);
@@ -26,9 +31,9 @@ const TaskerDashboard = () => {
             console.log("Fetched all tasks response:", allTasksResponse);
 
             if (Array.isArray(allTasksResponse?.tasks)) {
-                setAllTasks(allTasksResponse.tasks.filter(task => task.status === 'pending'));
+                setAllTasks(allTasksResponse.tasks.filter(task => task.status === 'open'));
             } else if (Array.isArray(allTasksResponse)) {
-                setAllTasks(allTasksResponse.filter(task => task.status === 'pending'));
+                setAllTasks(allTasksResponse.filter(task => task.status === 'open'));
             }
 
             const postedTasksResponse = await taskerService.getMyPostedTasks(user?.id);
@@ -47,6 +52,19 @@ const TaskerDashboard = () => {
                 setMyAcceptedTasks(acceptedTasksResponse.tasks);
             } else if (Array.isArray(acceptedTasksResponse)) {
                 setMyAcceptedTasks(acceptedTasksResponse);
+            }
+
+            // Fetch verification status
+            if (user?.id) {
+                const { data: verification } = await supabase
+                    .from('verifications')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .single();
+
+                setVerificationStatus(verification);
             }
 
         } catch (error) {
@@ -89,6 +107,54 @@ const TaskerDashboard = () => {
     const renderTasks = () => {
         let tasksToShow = [];
         let emptyMessage = "";
+
+        if (activeTab === 'verification') {
+            if (!verificationStatus) {
+                return <VerificationUpload onVerificationSubmitted={fetchAllData} />;
+            }
+
+            return (
+                <div className="bg-white p-8 rounded-lg shadow-md text-center">
+                    <h2 className="text-2xl font-bold mb-4">Verification Status</h2>
+                    <div className={`inline-block px-4 py-2 rounded-full text-lg font-semibold mb-4 ${verificationStatus.status === 'approved' ? 'bg-green-100 text-green-800' :
+                        verificationStatus.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                        }`}>
+                        {verificationStatus.status.charAt(0).toUpperCase() + verificationStatus.status.slice(1)}
+                    </div>
+
+                    {verificationStatus.status === 'pending' && (
+                        <p className="text-gray-600">
+                            Your documents have been submitted and are currently under review.
+                            This process usually takes 24-48 hours.
+                        </p>
+                    )}
+
+                    {verificationStatus.status === 'approved' && (
+                        <p className="text-gray-600">
+                            Congratulations! Your identity has been verified. You can now accept tasks with the verified badge.
+                        </p>
+                    )}
+
+                    {verificationStatus.status === 'rejected' && (
+                        <div className="text-left max-w-md mx-auto mt-4">
+                            <p className="text-red-600 mb-4">
+                                Unfortunately, your verification was rejected.
+                                {verificationStatus.admin_notes && (
+                                    <span className="block mt-2 font-medium">Reason: {verificationStatus.admin_notes}</span>
+                                )}
+                            </p>
+                            <button
+                                onClick={() => setVerificationStatus(null)}
+                                className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+                            >
+                                Try Again
+                            </button>
+                        </div>
+                    )}
+                </div>
+            );
+        }
 
         switch (activeTab) {
             case 'available':
@@ -151,33 +217,42 @@ const TaskerDashboard = () => {
             <h1 className="text-3xl font-bold mb-6">Tasker Dashboard</h1>
 
             <div className="mb-6">
-                <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+                <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg overflow-x-auto">
                     <button
                         onClick={() => setActiveTab('available')}
-                        className={`px-4 py-2 rounded-md font-medium transition-colors duration-200 ${activeTab === 'available'
+                        className={`px-4 py-2 rounded-md font-medium transition-colors duration-200 whitespace-nowrap ${activeTab === 'available'
                             ? 'bg-white text-blue-600 shadow-sm'
                             : 'text-gray-600 hover:text-gray-800'
                             }`}
                     >
-                        Available Tasks ({allTasks.length})
+                        Available Tasks ({allTasks?.length ?? 0})
                     </button>
                     <button
                         onClick={() => setActiveTab('posted')}
-                        className={`px-4 py-2 rounded-md font-medium transition-colors duration-200 ${activeTab === 'posted'
+                        className={`px-4 py-2 rounded-md font-medium transition-colors duration-200 whitespace-nowrap ${activeTab === 'posted'
                             ? 'bg-white text-blue-600 shadow-sm'
                             : 'text-gray-600 hover:text-gray-800'
                             }`}
                     >
-                        My Posted Tasks ({myPostedTasks.length})
+                        My Posted Tasks ({myPostedTasks?.length ?? 0})
                     </button>
                     <button
                         onClick={() => setActiveTab('accepted')}
-                        className={`px-4 py-2 rounded-md font-medium transition-colors duration-200 ${activeTab === 'accepted'
+                        className={`px-4 py-2 rounded-md font-medium transition-colors duration-200 whitespace-nowrap ${activeTab === 'accepted'
                             ? 'bg-white text-blue-600 shadow-sm'
                             : 'text-gray-600 hover:text-gray-800'
                             }`}
                     >
-                        My Accepted Tasks ({myAcceptedTasks.length})
+                        My Accepted Tasks ({myAcceptedTasks?.length ?? 0})
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('verification')}
+                        className={`px-4 py-2 rounded-md font-medium transition-colors duration-200 whitespace-nowrap ${activeTab === 'verification'
+                            ? 'bg-white text-blue-600 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-800'
+                            }`}
+                    >
+                        Verification {verificationStatus && verificationStatus.status !== 'approved' && '⚠️'}
                     </button>
                 </div>
             </div>
