@@ -51,3 +51,31 @@ export const createProfile = async (profileData) => {
   }
   return data[0]
 }
+
+export const updateProfile = async (userId, updates) => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', userId)
+    .select()
+
+  if (error) throw error
+  return data[0]
+}
+
+export const uploadFile = async (bucket, path, file) => {
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .upload(path, file)
+
+  if (error) throw error
+  return data
+}
+
+export const getPublicUrl = (bucket, path) => {
+  const { data } = supabase.storage
+    .from(bucket)
+    .getPublicUrl(path)
+
+  return data.publicUrl
+}

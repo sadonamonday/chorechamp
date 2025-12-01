@@ -59,11 +59,11 @@ const RegisterClient = () => {
 
         setIsLoading(true);
         try {
-            const result = await register(formData.username, formData.email, formData.password, 'client');
+            const result = await register(formData.username, formData.email, formData.password, 'customer');
 
             if (result.success) {
-                setMessage('Registration successful! Redirecting...');
-                setTimeout(() => navigate('/'), 1500);
+                setMessage('Registration successful! Please check your email to verify your account before logging in.');
+                // setTimeout(() => navigate('/'), 1500); // Don't redirect immediately so they see the message
             } else {
                 setMessage(result.message || 'Registration failed.');
             }

@@ -1,3 +1,4 @@
+-- ChoreChamp Database Schema Reference
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
@@ -432,16 +433,4 @@ CREATE TABLE public.verification_documents (
   uploaded_at timestamp without time zone DEFAULT now(),
   CONSTRAINT verification_documents_pkey PRIMARY KEY (id),
   CONSTRAINT verification_documents_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
-);
-
-CREATE TABLE public.portfolios (
-  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
-  tasker_id uuid NOT NULL,
-  title text NOT NULL,
-  description text,
-  image_url text,
-  project_date date,
-  created_at timestamp without time zone DEFAULT now(),
-  CONSTRAINT portfolios_pkey PRIMARY KEY (id),
-  CONSTRAINT portfolios_tasker_id_fkey FOREIGN KEY (tasker_id) REFERENCES public.profiles(id)
 );

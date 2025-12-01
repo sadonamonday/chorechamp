@@ -58,8 +58,12 @@ const RegisterTasker = () => {
             );
 
             if (result.success) {
-                setMessage('Registration successful! Redirecting...');
-                setTimeout(() => navigate('/tasker/dashboard'), 1500);
+                if (result.data?.session) {
+                    setMessage('Registration successful! Redirecting to profile setup...');
+                    setTimeout(() => navigate('/tasker/onboarding'), 1500);
+                } else {
+                    setMessage('Registration successful! Please check your email to verify your account before logging in.');
+                }
             } else {
                 setMessage(result.message || 'Registration failed.');
             }

@@ -75,7 +75,7 @@ export const AuthProvider = ({ children }) => {
 
         // Profile will be created automatically by database trigger
         // No need to manually create it here
-        return { success: true };
+        return { success: true, data };
     };
 
     const logout = async () => {
@@ -104,6 +104,27 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const updateUserProfile = async (updates) => {
+        try {
+            if (!user) return { success: false, message: 'No user logged in' };
+
+            const { data, error } = await supabase
+                .from('profiles')
+                .update(updates)
+                .eq('id', user.id)
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            setUser(prev => ({ ...prev, ...data }));
+            return { success: true, data };
+        } catch (error) {
+            console.error('Update profile error:', error);
+            return { success: false, message: error.message };
+        }
+    };
+
     const isAdmin = () => user?.role === 'admin';
     const isTasker = () => user?.role === 'tasker';
 
@@ -116,6 +137,7 @@ export const AuthProvider = ({ children }) => {
             logout,
             register,
             loginWithGoogle,
+            updateUserProfile,
             isAdmin,
             isTasker,
             isAuthenticated: !!user

@@ -19,6 +19,7 @@ import Register from "./Pages/Register";
 import RegisterClient from "./Pages/RegisterClient";
 import RegisterTasker from "./Pages/RegisterTasker";
 import Profile from "./components/profile/Profile";
+import ProfileWizard from "./components/profile/ProfileWizard";
 
 function App() {
     return (
@@ -29,6 +30,7 @@ function App() {
                     <main className="flex-grow">
                         <Routes>
                             <Route path="/tasker/dashboard" element={<TaskerDashboard />} />
+                            <Route path="/tasker/onboarding" element={<ProfileWizard />} />
                             <Route path="/tasker/task/:id" element={<TaskDetails />} />
                             <Route path="/" element={<Home />} />
                             <Route path="/tasks" element={<Task />} />
