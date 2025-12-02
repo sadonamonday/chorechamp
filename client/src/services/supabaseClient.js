@@ -9,7 +9,7 @@ export default supabase
 // Helper functions
 export const getServices = async () => {
   const { data, error } = await supabase
-    .from('services')
+    .from('task_categories')
     .select('*')
     .order('name')
 
