@@ -12,6 +12,7 @@ const TaskerDashboard = () => {
     const [allTasks, setAllTasks] = useState([]);
     const [myPostedTasks, setMyPostedTasks] = useState([]);
     const [myAcceptedTasks, setMyAcceptedTasks] = useState([]);
+    const [offersReceived, setOffersReceived] = useState([]);
     const [activeTab, setActiveTab] = useState('available');
     const [loading, setLoading] = useState(true);
     const [verificationStatus, setVerificationStatus] = useState(null);
@@ -54,6 +55,50 @@ const TaskerDashboard = () => {
                 setMyAcceptedTasks(acceptedTasksResponse);
             }
 
+            // Fetch offers received on my posted tasks
+            if (user?.id) {
+                // First, get all task IDs for tasks posted by the current user
+                const { data: userTasks } = await supabase
+                    .from('tasks')
+                    .select('id')
+                    .eq('user_id', user.id);
+
+                const taskIds = userTasks?.map(t => t.id) || [];
+
+                if (taskIds.length > 0) {
+                    // Then fetch offers for those tasks
+                    const { data: offers, error: offersError } = await supabase
+                        .from('task_offers')
+                        .select(`
+                            *,
+                            tasks:task_id (
+                                id,
+                                title,
+                                budget_amount,
+                                status
+                            ),
+                            profiles:tasker_id (
+                                id,
+                                name,
+                                profile_photo,
+                                rating
+                            )
+                        `)
+                        .in('task_id', taskIds)
+                        .order('created_at', { ascending: false });
+
+                    if (offersError) {
+                        console.error("Error fetching offers:", offersError);
+                        setOffersReceived([]);
+                    } else {
+                        console.log("Fetched offers received:", offers);
+                        setOffersReceived(offers || []);
+                    }
+                } else {
+                    setOffersReceived([]);
+                }
+            }
+
             // Fetch verification status
             if (user?.id) {
                 const { data: verification } = await supabase
@@ -72,6 +117,7 @@ const TaskerDashboard = () => {
             setAllTasks([]);
             setMyPostedTasks([]);
             setMyAcceptedTasks([]);
+            setOffersReceived([]);
         } finally {
             setLoading(false);
         }
@@ -169,12 +215,101 @@ const TaskerDashboard = () => {
                 tasksToShow = myAcceptedTasks;
                 emptyMessage = "You haven't accepted any tasks yet.";
                 break;
+            case 'offers_received':
+                // Offers will be rendered separately below
+                break;
             default:
                 tasksToShow = [];
         }
 
         if (loading) {
             return <div className="text-center py-8">Loading tasks...</div>;
+        }
+
+        // Render Offers Received
+        if (activeTab === 'offers_received') {
+            if (offersReceived.length === 0) {
+                return <div className="text-center py-8 text-gray-600">You haven't received any offers yet.</div>;
+            }
+
+            return (
+                <div className="space-y-4">
+                    {offersReceived.map(offer => (
+                        <div key={offer.id} className="bg-white p-6 rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition-shadow">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="flex-1">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                                        {offer.tasks?.title || 'Task'}
+                                    </h3>
+                                    <p className="text-sm text-gray-500">
+                                        Task Budget: R{offer.tasks?.budget_amount || 0}
+                                    </p>
+                                </div>
+                                <div className={`px-3 py-1 rounded-full text-sm font-medium ${offer.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                    offer.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                                        offer.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                            'bg-gray-100 text-gray-800'
+                                    }`}>
+                                    {offer.status.charAt(0).toUpperCase() + offer.status.slice(1)}
+                                </div>
+                            </div>
+
+                            <div className="flex items-center mb-4">
+                                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold mr-3">
+                                    {offer.profiles?.name?.charAt(0).toUpperCase() || 'T'}
+                                </div>
+                                <div>
+                                    <p className="font-medium text-gray-900">{offer.profiles?.name || 'Tasker'}</p>
+                                    <p className="text-sm text-gray-500">
+                                        Rating: {offer.profiles?.rating ? `${offer.profiles.rating}/5` : 'No rating yet'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <p className="text-sm text-gray-600">Offer Price</p>
+                                    <p className="text-xl font-bold text-blue-600">R{offer.price}</p>
+                                </div>
+                                {offer.estimated_hours && (
+                                    <div>
+                                        <p className="text-sm text-gray-600">Estimated Hours</p>
+                                        <p className="text-lg font-semibold text-gray-900">{offer.estimated_hours}h</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {offer.message && (
+                                <div className="mb-4">
+                                    <p className="text-sm text-gray-600 mb-1">Message</p>
+                                    <p className="text-gray-800 bg-gray-50 p-3 rounded">{offer.message}</p>
+                                </div>
+                            )}
+
+                            {offer.available_from && (
+                                <div className="mb-4">
+                                    <p className="text-sm text-gray-600">Available From</p>
+                                    <p className="text-gray-800">{new Date(offer.available_from).toLocaleDateString()}</p>
+                                </div>
+                            )}
+
+                            <div className="flex justify-between items-center text-sm text-gray-500 pt-4 border-t">
+                                <span>Submitted: {new Date(offer.created_at).toLocaleDateString()}</span>
+                                {offer.status === 'pending' && (
+                                    <div className="flex gap-2">
+                                        <button className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
+                                            Accept
+                                        </button>
+                                        <button className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
+                                            Reject
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            );
         }
 
         // Use new split-view layout for Available Tasks
@@ -244,6 +379,15 @@ const TaskerDashboard = () => {
                             }`}
                     >
                         My Accepted Tasks ({myAcceptedTasks?.length ?? 0})
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('offers_received')}
+                        className={`px-4 py-2 rounded-md font-medium transition-colors duration-200 whitespace-nowrap ${activeTab === 'offers_received'
+                            ? 'bg-white text-blue-600 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-800'
+                            }`}
+                    >
+                        Offers Received ({offersReceived?.length ?? 0})
                     </button>
                     <button
                         onClick={() => setActiveTab('verification')}

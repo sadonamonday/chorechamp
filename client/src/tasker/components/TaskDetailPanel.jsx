@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { FaMapMarkerAlt, FaClock, FaUser, FaEllipsisH, FaFlag } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaClock, FaUser, FaEllipsisH, FaFlag, FaHourglass } from 'react-icons/fa';
 import { format } from 'date-fns';
+import supabase from '../../services/supabaseClient';
+import OfferModal from './OfferModal';
 
 const TaskDetailPanel = ({ task, onAcceptTask, currentUserId }) => {
     const [showMoreOptions, setShowMoreOptions] = useState(false);
-    const [isAccepting, setIsAccepting] = useState(false);
+    const [showOfferModal, setShowOfferModal] = useState(false);
+    const [offerSuccess, setOfferSuccess] = useState(false);
 
     if (!task) {
         return (
@@ -26,28 +29,35 @@ const TaskDetailPanel = ({ task, onAcceptTask, currentUserId }) => {
         }
     };
 
-    const handleAcceptTask = async () => {
+    const handleSubmitOffer = async (offerData) => {
         if (!currentUserId) {
-            alert("Please log in to accept tasks");
-            return;
+            throw new Error("Please log in to make offers");
         }
 
-        if (!window.confirm("Are you sure you want to accept this task?")) {
-            return;
+        const { error } = await supabase
+            .from('task_offers')
+            .insert([{
+                task_id: offerData.task_id,
+                tasker_id: currentUserId,
+                price: offerData.price,
+                message: offerData.message,
+                estimated_hours: offerData.estimated_hours,
+                available_from: offerData.available_from,
+                status: 'pending'
+            }]);
+
+        if (error) {
+            throw new Error(error.message || 'Failed to submit offer');
         }
 
-        setIsAccepting(true);
-        try {
-            await onAcceptTask(task.id);
-        } catch (error) {
-            console.error('Error accepting task:', error);
-        } finally {
-            setIsAccepting(false);
-        }
+        setOfferSuccess(true);
+        setTimeout(() => setOfferSuccess(false), 5000);
     };
 
-    const canAcceptTask = task.status === "pending" &&
-        String(task.created_by) !== String(currentUserId);
+    const canMakeOffer = task.status === "open" &&
+        String(task.user_id) !== String(currentUserId);
+
+    const isTaskExpired = task.expires_at && new Date(task.expires_at) < new Date();
 
     const openMap = () => {
         if (task.location) {
@@ -91,26 +101,34 @@ const TaskDetailPanel = ({ task, onAcceptTask, currentUserId }) => {
                     </div>
                 </div>
 
+                {/* Success Message */}
+                {offerSuccess && (
+                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-green-700 text-sm font-medium">✓ Offer submitted successfully!</p>
+                    </div>
+                )}
+
                 {/* Action Buttons */}
                 <div className="flex gap-3">
-                    {canAcceptTask && (
+                    {canMakeOffer && !isTaskExpired && (
                         <button
-                            onClick={handleAcceptTask}
-                            disabled={isAccepting}
-                            className={`flex-1 py-3 px-6 rounded-full font-semibold transition-colors ${isAccepting
-                                    ? 'bg-gray-400 cursor-not-allowed text-white'
-                                    : 'bg-blue-600 hover:bg-blue-700 text-white'
-                                }`}
+                            onClick={() => setShowOfferModal(true)}
+                            className="flex-1 py-3 px-6 rounded-full font-semibold transition-colors bg-blue-600 hover:bg-blue-700 text-white"
                         >
-                            {isAccepting ? 'Accepting...' : 'Make an offer'}
+                            Make an offer
                         </button>
                     )}
-                    {!canAcceptTask && task.status === 'pending' && (
+                    {canMakeOffer && isTaskExpired && (
+                        <div className="flex-1 py-3 px-6 rounded-full font-semibold bg-gray-200 text-gray-600 text-center">
+                            Task Expired
+                        </div>
+                    )}
+                    {!canMakeOffer && task.status === 'open' && (
                         <div className="flex-1 py-3 px-6 rounded-full font-semibold bg-gray-200 text-gray-600 text-center">
                             Your Task
                         </div>
                     )}
-                    {task.status !== 'pending' && (
+                    {task.status !== 'open' && (
                         <div className="flex-1 py-3 px-6 rounded-full font-semibold bg-gray-200 text-gray-600 text-center capitalize">
                             {task.status}
                         </div>
@@ -172,6 +190,20 @@ const TaskDetailPanel = ({ task, onAcceptTask, currentUserId }) => {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Expires At */}
+                        {task.expires_at && (
+                            <div className="flex items-start">
+                                <FaHourglass className="w-5 h-5 mr-3 text-gray-400 mt-1" />
+                                <div className="flex-1">
+                                    <div className="text-sm text-gray-600">EXPIRES ON</div>
+                                    <div className={`font-medium ${isTaskExpired ? 'text-red-600' : 'text-gray-900'}`}>
+                                        {formatDate(task.expires_at)}
+                                        {isTaskExpired && <span className="ml-2 text-sm">(Expired)</span>}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -184,7 +216,7 @@ const TaskDetailPanel = ({ task, onAcceptTask, currentUserId }) => {
                 </div>
 
                 {/* Cancellation Policy */}
-                {canAcceptTask && (
+                {canMakeOffer && (
                     <div className="mt-8 p-4 bg-blue-50 rounded-lg">
                         <h3 className="font-semibold text-gray-900 mb-2">Cancellation policy</h3>
                         <p className="text-sm text-gray-700">
@@ -197,6 +229,16 @@ const TaskDetailPanel = ({ task, onAcceptTask, currentUserId }) => {
                     </div>
                 )}
             </div>
+
+            {/* Offer Modal */}
+            <OfferModal
+                isOpen={showOfferModal}
+                onClose={() => setShowOfferModal(false)}
+                taskId={task.id}
+                taskBudget={task.budget_amount}
+                taskTitle={task.title}
+                onSubmitOffer={handleSubmitOffer}
+            />
         </div>
     );
 };

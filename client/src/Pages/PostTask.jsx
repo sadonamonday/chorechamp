@@ -22,7 +22,8 @@ const PostTask = () => {
         image_urls: [],
         budget_amount: '',
         urgency: 'flexible',
-        budget_type: 'fixed' // Default to fixed
+        budget_type: 'fixed', // Default to fixed
+        expires_at: ''
     });
 
     const [errors, setErrors] = useState({});
@@ -76,6 +77,9 @@ const PostTask = () => {
             if (!formData.budget_amount || isNaN(formData.budget_amount) || Number(formData.budget_amount) <= 0) {
                 newErrors.budget_amount = 'Valid budget is required';
             }
+            if (formData.expires_at && new Date(formData.expires_at) < new Date()) {
+                newErrors.expires_at = 'Expiration must be in the future';
+            }
         }
 
         if (Object.keys(newErrors).length > 0) {
@@ -103,36 +107,14 @@ const PostTask = () => {
         setMessage('');
 
         try {
-            const { error } = await supabase.from('tasks').insert([{
-                user_id: user.id,
-                title: formData.title,
-                description: formData.description,
-                location_id: null, // We need to handle location properly, for now storing in description or separate field if schema allows? 
-                // Wait, schema has location_id referencing locations table. 
-                // For MVP/this task, we might need to create a location record first or just skip if complex.
-                // Let's check schema again. tasks has location_id. locations table has address, city etc.
-                // To keep it simple for now, I will assume we might need to insert into locations first.
-                // OR, if the user just wants a string location, I might need to check if 'tasks' has a text location field.
-                // Schema says: location_id bigint.
-                // Let's create a location record first.
-
-                category_id: formData.category_id,
-                budget_amount: formData.budget_amount,
-                budget_type: formData.budget_type,
-                due_date: formData.due_date,
-                status: 'open',
-                urgency: formData.urgency,
-                image_urls: formData.image_urls
-            }]);
-
-            // Wait, I need to handle the location insert.
-            // Let's do a quick insert into locations table.
+            // 1. Create Location Record first
             const { data: locationData, error: locationError } = await supabase.from('locations').insert([
                 { user_id: user.id, address: formData.location }
             ]).select().single();
 
             if (locationError) throw locationError;
 
+            // 2. Create Task with location_id
             const { error: taskError } = await supabase.from('tasks').insert([{
                 user_id: user.id,
                 title: formData.title,
@@ -144,7 +126,8 @@ const PostTask = () => {
                 due_date: formData.due_date,
                 status: 'open',
                 urgency: formData.urgency,
-                image_urls: formData.image_urls
+                image_urls: formData.image_urls,
+                expires_at: formData.expires_at || null
             }]);
 
             if (taskError) throw taskError;
@@ -306,6 +289,19 @@ const PostTask = () => {
                         </label>
                     ))}
                 </div>
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Task Expires On (Optional)</label>
+                <input
+                    type="datetime-local"
+                    name="expires_at"
+                    value={formData.expires_at}
+                    onChange={handleChange}
+                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none ${errors.expires_at ? 'border-red-500' : 'border-gray-300'}`}
+                />
+                <p className="text-xs text-gray-500 mt-1">After this date, taskers won't be able to make offers</p>
+                {errors.expires_at && <p className="text-red-500 text-sm mt-1">{errors.expires_at}</p>}
             </div>
         </div>
     );
