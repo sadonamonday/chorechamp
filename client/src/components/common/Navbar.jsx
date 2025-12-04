@@ -42,6 +42,11 @@ const Navbar = () => {
                                     Account
                                 </Link>
                             </li>
+                            <li>
+                                <Link to="/messages" className="text-gray-700 hover:text-gray-900 transition duration-200 font-medium">
+                                    Messages
+                                </Link>
+                            </li>
                         </>
                     ) : (
                         <>

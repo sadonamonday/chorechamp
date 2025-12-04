@@ -1,11 +1,13 @@
 // /src/tasker/pages/TaskDetails.jsx
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import taskerService from '../utils/taskerService.js';
+import chatService from '../../services/chatService.js';
 import { useAuth } from '../../context/AuthContext';
 
 const TaskDetails = () => {
     const { id } = useParams();
+    const navigate = useNavigate();
     const { user } = useAuth();
     const [task, setTask] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -93,9 +95,8 @@ const TaskDetails = () => {
                 <button
                     onClick={handleAccept}
                     disabled={isAccepting}
-                    className={`mt-6 ${
-                        isAccepting ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'
-                    } text-white font-semibold px-6 py-3 rounded transition duration-300 shadow-md`}
+                    className={`mt-6 ${isAccepting ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'
+                        } text-white font-semibold px-6 py-3 rounded transition duration-300 shadow-md`}
                 >
                     {isAccepting ? 'Accepting...' : 'Accept Task'}
                 </button>
@@ -113,6 +114,26 @@ const TaskDetails = () => {
                 <p className="mt-6 text-blue-600 font-medium">
                     This is your task. You cannot accept your own task.
                 </p>
+            )}
+
+            {/* Message Button */}
+            {user && task.created_by !== user.id && (
+                <button
+                    onClick={async () => {
+                        try {
+                            // Assuming we have a chatService.createConversation method
+                            // We need to import chatService and useNavigate
+                            const conversation = await chatService.createConversation(user.id, task.created_by, task.id);
+                            navigate('/messages');
+                        } catch (error) {
+                            console.error('Failed to start conversation:', error);
+                            alert('Failed to start conversation');
+                        }
+                    }}
+                    className="mt-4 ml-4 bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-3 rounded transition duration-300 shadow-md"
+                >
+                    Message Poster
+                </button>
             )}
         </div>
     );

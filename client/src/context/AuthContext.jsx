@@ -11,7 +11,14 @@ export const AuthProvider = ({ children }) => {
         // Check active session
         const getSession = async () => {
             try {
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                // Create a timeout promise
+                const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Session check timed out')), 5000));
+
+                // Race the session check against the timeout
+                const { data: { session }, error: sessionError } = await Promise.race([
+                    supabase.auth.getSession(),
+                    timeout
+                ]);
                 if (sessionError) throw sessionError;
 
                 if (session?.user) {

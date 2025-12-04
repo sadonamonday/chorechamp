@@ -1,8 +1,8 @@
-import React, {createContext, useState, useEffect, useContext} from "react";
+import React, { createContext, useState, useEffect, useContext } from "react";
 
 export const AdminAuthContext = createContext({
     admin: null,
-    setAdmin: () => {},
+    setAdmin: () => { },
 });
 export const useAdminAuth = () => useContext(AdminAuthContext);
 export const AdminAuthProvider = ({ children }) => {
@@ -13,7 +13,12 @@ export const AdminAuthProvider = ({ children }) => {
         const adminToken = localStorage.getItem("adminToken");
         const storedAdmin = localStorage.getItem("adminUser");
         if (storedAdmin && adminToken) {
-            setAdmin(JSON.parse(storedAdmin));
+            try {
+                setAdmin(JSON.parse(storedAdmin));
+            } catch (error) {
+                console.error("Failed to parse admin user from local storage", error);
+                localStorage.removeItem("adminUser");
+            }
         }
     }, []);
 

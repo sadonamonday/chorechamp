@@ -21,13 +21,13 @@ const EditTask = () => {
         const fetchTask = async () => {
             try {
                 const taskData = await taskerService.getTaskById(id);
-                
+
                 // Check if the current user is the task owner
-                if (String(taskData.created_by) !== String(user?.id)) {
+                if (String(taskData.user_id) !== String(user?.id)) {
                     setError("You don't have permission to edit this task");
                     return;
                 }
-                
+
                 setFormData({
                     title: taskData.title || '',
                     description: taskData.description || '',
@@ -41,7 +41,7 @@ const EditTask = () => {
                 setLoading(false);
             }
         };
-        
+
         if (user) {
             fetchTask();
         } else {
@@ -60,14 +60,14 @@ const EditTask = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         try {
             setLoading(true);
             await taskerService.updateTask({
                 id: id,
                 ...formData
             }, user?.id);
-            
+
             alert("Task updated successfully!");
             navigate('/tasker/dashboard');
         } catch (error) {
@@ -84,7 +84,7 @@ const EditTask = () => {
     return (
         <div className="max-w-4xl mx-auto px-4 py-8">
             <h1 className="text-3xl font-bold mb-6">Edit Task</h1>
-            
+
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                     <label className="block text-gray-700 mb-2">Title</label>
@@ -97,7 +97,7 @@ const EditTask = () => {
                         required
                     />
                 </div>
-                
+
                 <div>
                     <label className="block text-gray-700 mb-2">Description</label>
                     <textarea
@@ -109,7 +109,7 @@ const EditTask = () => {
                         required
                     ></textarea>
                 </div>
-                
+
                 <div>
                     <label className="block text-gray-700 mb-2">Location</label>
                     <input
@@ -121,7 +121,7 @@ const EditTask = () => {
                         required
                     />
                 </div>
-                
+
                 <div>
                     <label className="block text-gray-700 mb-2">Budget (R)</label>
                     <input
@@ -133,7 +133,7 @@ const EditTask = () => {
                         required
                     />
                 </div>
-                
+
                 <div>
                     <label className="block text-gray-700 mb-2">Category</label>
                     <select
@@ -151,7 +151,7 @@ const EditTask = () => {
                         <option value="Other">Other</option>
                     </select>
                 </div>
-                
+
                 <div className="flex space-x-4">
                     <button
                         type="submit"
@@ -160,7 +160,7 @@ const EditTask = () => {
                     >
                         {loading ? 'Updating...' : 'Update Task'}
                     </button>
-                    
+
                     <button
                         type="button"
                         onClick={() => navigate('/tasker/dashboard')}

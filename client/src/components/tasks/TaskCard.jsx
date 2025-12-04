@@ -31,25 +31,13 @@ const TaskCard = ({ task, onTaskAccepted, onViewDetails, currentUserId, onTaskDe
         setIsAccepting(true);
 
         try {
-            const { data, error } = await supabase
-                .from('tasks')
-                .update({
-                    status: 'assigned',
-                    assigned_worker_id: currentUserId
-                })
-                .eq('id', task.id)
-                .select()
-                .single();
-
-            if (error) throw error;
-
-            alert('Task accepted successfully!');
+            // Delegate to parent component
             if (onTaskAccepted) {
-                onTaskAccepted(task.id, data);
+                await onTaskAccepted(task.id);
             }
         } catch (error) {
             console.error('Failed to accept task:', error);
-            alert('An error occurred while accepting the task. Please check your connection and try again.');
+            alert('An error occurred while accepting the task.');
         } finally {
             setIsAccepting(false);
         }
@@ -66,17 +54,9 @@ const TaskCard = ({ task, onTaskAccepted, onViewDetails, currentUserId, onTaskDe
         setIsDeleting(true);
 
         try {
-            const { error } = await supabase
-                .from('tasks')
-                .delete()
-                .eq('id', task.id)
-                .eq('user_id', currentUserId); // Ensure ownership
-
-            if (error) throw error;
-
-            alert("Task deleted successfully!");
+            // Delegate to parent component
             if (onTaskDeleted) {
-                onTaskDeleted(task.id);
+                await onTaskDeleted(task.id);
             }
         } catch (error) {
             console.error("Failed to delete task:", error);

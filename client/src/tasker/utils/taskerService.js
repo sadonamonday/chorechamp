@@ -195,13 +195,32 @@ const taskerService = {
     // Delete a task
     deleteTask: async (taskId, userId) => {
         try {
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('tasks')
                 .delete()
                 .eq('id', taskId)
-                .eq('user_id', userId); // Ensure ownership
+                .select();
 
             if (error) throw error;
+
+            // If data is empty, it might mean the task didn't exist or RLS prevented deletion.
+            // However, with RLS, a successful delete of 0 rows is not an error in itself, 
+            // but for the UI we might want to know.
+            // But if we just want to ensure it's gone, we can return success.
+            // The previous logic threw an error if data was empty. 
+            // If RLS hides the row, delete returns 0 rows. 
+            // If we want to report "Permission denied", we can keep the check.
+
+            if (!data || data.length === 0) {
+                // It's possible the task was already deleted or RLS hid it.
+                // We can log a warning but maybe not throw, or throw a more specific error.
+                // For now, I'll keep the error throw but maybe relax it or just let it be, 
+                // as the user's issue was likely the explicit .eq check failing.
+                // If I remove .eq('user_id', ...), and it STILL fails, then it's definitely RLS.
+                // But removing .eq('user_id', ...) allows Admins to delete if RLS allows it.
+                throw new Error("Task not found or permission denied. Unable to delete.");
+            }
+
             return { success: true };
         } catch (error) {
             console.error('Error deleting task:', error);

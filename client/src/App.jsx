@@ -20,6 +20,7 @@ import RegisterClient from "./Pages/RegisterClient";
 import RegisterTasker from "./Pages/RegisterTasker";
 import Profile from "./components/profile/Profile";
 import ProfileWizard from "./components/profile/ProfileWizard";
+import Messages from "./Pages/Messages";
 
 function App() {
     return (
@@ -42,9 +43,10 @@ function App() {
                             <Route path="/register" element={<Register />} />
                             <Route path="/register/client" element={<RegisterClient />} />
                             <Route path="/register/tasker" element={<RegisterTasker />} />
-                            <Route path="/edit-task/:id" element={<EditTask />} />
+
                             <Route path="/auth/callback" element={<AuthCallback />} />
                             <Route path="/account" element={<Profile />} />
+                            <Route path="/messages" element={<Messages />} />
                         </Routes>
                     </main>
                     <Footer />
